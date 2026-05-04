@@ -214,12 +214,12 @@ void encode_mus(const char* in_wav, const char* out_mus) {
 	FILE* mf = fopen(out_mus, "wb");
 
 	if (!wf) {
-		fprintf(stderr, "specified input doesn't exist\n");
+		fprintf(stderr, "specified input doesn't exist or couldn't be read\n");
 		return;
 	}
 
 	if (!mf) {
-		fprintf(stderr, "specified output doesn't exist\n");
+		fprintf(stderr, "couldn't open output for writing\n");
 		return;
 	}
 
@@ -358,26 +358,86 @@ void encode_mus(const char* in_wav, const char* out_mus) {
 	fclose(mf);
 }
 
-void usage(char* name) {
+void decode_raw(const char* in_file, const char* out_file, uint32_t sample_rate) {
+	FILE* f = fopen(in_file, "rb");
+	FILE* out = fopen(out_file, "wb");
+
+	if (!f) {
+		fprintf(stderr, "specified input doesn't exist or couldn't be read\n");
+		return;
+	}
+
+	if (!out) {
+		fprintf(stderr, "couldn't open output for writing\n");
+		return;
+	}
+
+	write_wav_header(out, sample_rate, 1, 0);
+
+	sony_adpcm_decode_state_t state = {0};
+	uint8_t vag_block[16];
+
+	while (fread(vag_block, 16, 1, f) == 1) {
+		int shift = vag_block[0] & 0x0F;
+		int filter = (vag_block[0] >> 4) & 0x0F;
+
+		for (int s = 0; s < 28; s++) {
+			uint8_t byte = vag_block[2 + (s / 2)];
+			uint8_t nibble = (s % 2 == 0) ? (byte & 0x0F) : (byte >> 4);
+
+			int16_t sample = decode_sample(nibble, shift, filter, &state);
+			fwrite(&sample, sizeof(int16_t), 1, out);
+		}
+	}
+
+	uint32_t data_size = ftell(out) - 44;
+	fseek(out, 0, SEEK_SET);
+	write_wav_header(out, sample_rate, 1, data_size);
+
+	fclose(f);
+	fclose(out);
+	printf("decoded raw adpcm at %uHz mono wav\n", sample_rate);
+}
+
+int usage(char* name) {
 	printf("namco mus tool (AUDIO.IRX 1.24)\n");
 	printf("usage:\n");
 	printf("    %s dec <input.mus> <output.wav>\n", name);
 	printf("    %s enc <input.wav> <output.mus>\n", name);
+	printf("    %s rawdec <input> <output.wav> <hz>\n", name);
+
+	return 64;
 }
 
 int main(int argc, char** argv) {
-	if (argc < 4) {
-		usage(argv[0]);
-		return 64;
+	if (argc < 2) {
+		return usage(argv[0]);
 	}
 
 	if (strcmp(argv[1], "dec") == 0) {
+		if (argc < 4) {
+			return usage(argv[0]);
+		}
+
 		decode_mus(argv[2], argv[3]);
 		return 0;
 	}
 
 	if (strcmp(argv[1], "enc") == 0) {
+		if (argc < 4) {
+			return usage(argv[0]);
+		}
+
 		encode_mus(argv[2], argv[3]);
+		return 0;
+	}
+
+	if (strcmp(argv[1], "rawdec") == 0) {
+		if (argc < 5) {
+			return usage(argv[0]);
+		}
+
+		decode_raw(argv[2], argv[3], atoi(argv[4]));
 		return 0;
 	}
 
