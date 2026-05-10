@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <sysexits.h>
+
 #include "riffwave.h"
 
 #define BLOCK_SIZE 0x4800
@@ -78,15 +80,15 @@ int16_t decode_sample(uint8_t nibble, int shift, int filter, sony_adpcm_decode_s
 	return (int16_t)sample;
 }
 
-void decode_mus(const char* in_file, const char* out_file) {
+int decode_mus(const char* in_file, const char* out_file) {
 	FILE* f = fopen(in_file, "rb");
 	FILE* out = fopen(out_file, "wb");
-	if (!f || !out) return;
+	if (!f || !out) return EX_NOINPUT;
 
 	svds_block_t first_block;
 	if (fread(&first_block, sizeof(svds_block_t), 1, f) != 1) {
 		fclose(f); fclose(out);
-		return;
+		return EX_DATAERR;
 	}
 
 	uint32_t channels = first_block.channels;
@@ -209,25 +211,25 @@ void encode_vag_block(const double* samples, uint8_t* out_vag, encoder_state_t* 
 	}
 }
 
-void encode_mus(const char* in_wav, const char* out_mus) {
+int encode_mus(const char* in_wav, const char* out_mus) {
 	FILE* wf = fopen(in_wav, "rb");
 	FILE* mf = fopen(out_mus, "wb");
 
 	if (!wf) {
 		fprintf(stderr, "specified input doesn't exist or couldn't be read\n");
-		return;
+		return EX_NOINPUT;
 	}
 
 	if (!mf) {
 		fprintf(stderr, "couldn't open output for writing\n");
-		return;
+		return EX_NOINPUT;
 	}
 
 	WavInfo wav;
 	if (!wav_open(wf, &wav)) {
 		fprintf(stderr, "failed to parse riff wave\n");
 		fclose(wf); fclose(mf);
-		return;
+		return EX_DATAERR;
 	}
 
 	uint32_t pitch = (uint32_t)((wav.sample_rate * 4096.0) / 48000.0);
@@ -358,18 +360,18 @@ void encode_mus(const char* in_wav, const char* out_mus) {
 	fclose(mf);
 }
 
-void decode_raw(const char* in_file, const char* out_file, uint32_t sample_rate) {
+int decode_raw(const char* in_file, const char* out_file, uint32_t sample_rate) {
 	FILE* f = fopen(in_file, "rb");
 	FILE* out = fopen(out_file, "wb");
 
 	if (!f) {
 		fprintf(stderr, "specified input doesn't exist or couldn't be read\n");
-		return;
+		return EX_NOINPUT;
 	}
 
 	if (!out) {
 		fprintf(stderr, "couldn't open output for writing\n");
-		return;
+		return EX_NOINPUT;
 	}
 
 	write_wav_header(out, sample_rate, 1, 0);
@@ -406,7 +408,7 @@ int usage(char* name) {
 	printf("    %s enc <input.wav> <output.mus>\n", name);
 	printf("    %s rawdec <input> <output.wav> <hz>\n", name);
 
-	return 64;
+	return EX_USAGE;
 }
 
 int main(int argc, char** argv) {
@@ -419,8 +421,7 @@ int main(int argc, char** argv) {
 			return usage(argv[0]);
 		}
 
-		decode_mus(argv[2], argv[3]);
-		return 0;
+		return decode_mus(argv[2], argv[3]);
 	}
 
 	if (strcmp(argv[1], "enc") == 0) {
@@ -428,8 +429,7 @@ int main(int argc, char** argv) {
 			return usage(argv[0]);
 		}
 
-		encode_mus(argv[2], argv[3]);
-		return 0;
+		return encode_mus(argv[2], argv[3]);
 	}
 
 	if (strcmp(argv[1], "rawdec") == 0) {
@@ -437,11 +437,9 @@ int main(int argc, char** argv) {
 			return usage(argv[0]);
 		}
 
-		decode_raw(argv[2], argv[3], atoi(argv[4]));
-		return 0;
+		return decode_raw(argv[2], argv[3], atoi(argv[4]));
 	}
 
 	printf("bad args\n");
-	usage(argv[0]);
-	return 64;
+	return usage(argv[0]);
 }
