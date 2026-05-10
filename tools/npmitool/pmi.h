@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-// referenced from GS_Users_Manual.pdf at https://github.com/DarrenRainey/PS2-Programming-Docs
+/// @brief referenced from GS_Users_Manual.pdf at https://github.com/DarrenRainey/PS2-Programming-Docs
+/// PMW2 uses GS_PSM_CT16, GS_PSM_CT32, GS_PSM_T4, GS_PSM_T8, everything else goes unused
 typedef enum GS_PSM : unsigned char {
 	GS_PSM_CT32   = 0x00, // RGBA 32-bit
 	GS_PSM_CT24   = 0x01, // RGB 24-bit
@@ -24,37 +25,37 @@ typedef enum GS_PSM : unsigned char {
 /// this is the header for .pmi textures
 typedef struct PMI {
 	/// @brief this should always be 'PMI\0'
-    unsigned char magic[4];
+	unsigned char magic[4];
 	/// @brief in star.pmi this is 24
-    unsigned int header;
+	unsigned int header;
 	/// @brief this is just a float (0.2, 0.33, etc) however if 0.33 is incorrectly interpreted as uint32 it is 1051260355 which as a unix epoch is Friday, April 25, 2003 at 8:45:55 AM, do not follow in my footsteps and let this confuse you as it is absolutely just by pure coincidence and WILL waste your time
-    float version;
+	float version;
 	/// @brief image width in pixels
-    short unsigned int width;
+	short unsigned int width;
 	/// @brief image height in pixels
-    short unsigned int height;
+	short unsigned int height;
 	/// @brief image bitdepth
-    unsigned char depth;
+	unsigned char depth;
 	/// @brief 0x00 = Opaque, 0x01 = Transparent
-    unsigned char trans;
+	unsigned char trans;
 	/// @brief log2 width
-    unsigned char tw;
+	unsigned char tw;
 	/// @brief log2 height
-    unsigned char th;
+	unsigned char th;
 	/// @brief clut (color look up table) color depth
-    short unsigned int clutDepth;
+	short unsigned int clutDepth;
 	/// @brief clut (color look up table) length in bytes
-    short unsigned int clutLen;
+	short unsigned int clutLen;
 	/// @brief scanline width
-    short unsigned int rowLen;
+	short unsigned int rowLen;
 	/// @brief misc flags
-    unsigned char flags;
+	unsigned char flags;
 	/// @brief pixel mode
-    GS_PSM pmode;
-	/// @brief texture base pointer
-    short unsigned int texBP;
-	/// @brief clut base pointer
-    short unsigned int clutBP;
+	GS_PSM pmode;
+	/// @brief texture data pointer (set at runtime)
+	short unsigned int texBP;
+	/// @brief clut data pointer (set at runtime)
+	short unsigned int clutBP;
 } PMI;
 
 #endif // PMI_H
