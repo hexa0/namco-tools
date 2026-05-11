@@ -1,8 +1,6 @@
 #ifndef PMI_H
 #define PMI_H
 
-#include <stdint.h>
-
 /// @brief referenced from GS_Users_Manual.pdf at https://github.com/DarrenRainey/PS2-Programming-Docs
 /// PMW2 uses GS_PSM_CT16, GS_PSM_CT32, GS_PSM_T4, GS_PSM_T8, everything else goes unused
 typedef enum GS_PSM : unsigned char {
